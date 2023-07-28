@@ -1,4 +1,6 @@
 # numerica-twitch-godot
 
-basado en el juego de RothioTome
+Basado en el juego de RothioTome
 https://rothiotome.itch.io/numerica
+
+Para como ejemplo sin restricciones.
