@@ -49,11 +49,12 @@ func _connected(proto = ""):
 	if auth && auth.has("accessToken"):
 		ws.get_peer(1).put_packet(("PASS oauth:" + auth.accessToken).to_utf8())
 		ws.get_peer(1).put_packet(("NICK "+auth.twitchUser.login).to_utf8())
-		ws.get_peer(1).put_packet("JOIN #seyacat".to_utf8())
+		ws.get_peer(1).put_packet(("JOIN #"+auth.twitchUser.login).to_utf8())
 	else:
+		var anonimousChannel = $"../Game/Panel2/VBoxContainer/HBoxContainer6/anonimousChannel".text
 		ws.get_peer(1).put_packet("NICK justinfan12345".to_utf8())
 		ws.get_peer(1).put_packet("PASS kappa".to_utf8())
-		ws.get_peer(1).put_packet("JOIN #seyacat".to_utf8())
+		ws.get_peer(1).put_packet(("JOIN #"+anonimousChannel).to_utf8())
 	
 	
 	
