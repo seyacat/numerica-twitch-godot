@@ -2,7 +2,7 @@ extends Node
 
 # oauth-dev.seyacat.com client_id integration
 var client_id = "qhndxilvmmnsb8xq5jfmbvqk544opx"
-var ws
+var ws = WebSocketClient.new()
 var connected = false;
 signal new_message(data);
 var temp_id
@@ -10,10 +10,31 @@ var auth
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	var _timer = Timer.new()
+	add_child(_timer)
+	_timer.connect("timeout", self, "_tic")
+	_timer.set_wait_time(1.0)
+	_timer.set_one_shot(false) # Make sure it loops
+	_timer.start()
+	
 	_load_session()
 	if(auth):
 		_ws_connect()
 		pass
+
+func _tic(): 
+	if auth:
+		$"../Game/Panel2/VBoxContainer/HBoxContainer6/anonimousConnectionStatus".color = Color.gray
+		if ws.get_connection_status() == WebSocketClient.CONNECTION_CONNECTED:
+			$"../Game/Panel2/VBoxContainer/HBoxContainer7/connectionStatus".color = Color.green
+		else:
+			$"../Game/Panel2/VBoxContainer/HBoxContainer7/connectionStatus".color = Color.red
+	else:
+		$"../Game/Panel2/VBoxContainer/HBoxContainer7/connectionStatus".color = Color.gray
+		if ws.get_connection_status() == WebSocketClient.CONNECTION_CONNECTED:
+			$"../Game/Panel2/VBoxContainer/HBoxContainer6/anonimousConnectionStatus".color = Color.green
+		else:
+			$"../Game/Panel2/VBoxContainer/HBoxContainer6/anonimousConnectionStatus".color = Color.red
 			
 func _authenticate():
 	auth = null
@@ -111,6 +132,7 @@ func _processCredentials(result, response_code, headers, body):
 	_save_session()
 	_ws_connect()
 	
+#TODO: ADD TIMER RETRIEVE ACCESS TOKEN
 func _notification(what):
 	if what == MainLoop.NOTIFICATION_WM_FOCUS_IN :
 		print("NOTIFICATION_APPLICATION_FOCUS_IN")
@@ -136,23 +158,55 @@ func _load_session():
 	if(temp_auth):
 		auth = temp_auth
 		
-func _ban(broadcaster_id,user_id,duration,reason="no reason"):
-	
-	if(!auth):
+func _ban(data,duration,reason="no reason"):
+	if !auth || !data.has("room-id") || !data.has("user-id"):
 		return
 	var headers = ["Content-Type: application/json", 
 		'Client-Id: '+client_id, 
 		'Authorization: Bearer '+auth.accessToken]
-	var json = JSON.print({"data": {"user_id":user_id,"duration":duration,"reason":reason}})
-	
-	$HTTPRequest.request(
-		"https://api.twitch.tv/helix/moderation/bans?broadcaster_id="+str(broadcaster_id)+"&moderator_id="+str(auth.twitchUser.id),
+	var json = JSON.print({"data": {"user_id":data["user-id"],"duration":duration,"reason":reason}})
+	var httr = _newTemporalHttpRequest()
+	httr.request(
+		"https://api.twitch.tv/helix/moderation/bans?broadcaster_id="+str(data["room-id"])+"&moderator_id="+str(auth.twitchUser.id),
 		headers,true,
 		HTTPClient.METHOD_POST, json)
 		
+func _vip(data):
+	print("VIIIIIP")
+	if !auth || !data.has("room-id") || !data.has("user-id"):
+		return
+	print("https://api.twitch.tv/helix/channels/vips?broadcaster_id="+str(data["room-id"])+"&user_id="+str(data["user-id"]))
+	var headers = [
+		'Client-Id: '+client_id, 
+		'Authorization: Bearer '+auth.accessToken]
+	var httr = _newTemporalHttpRequest()
+	httr.request(
+		"https://api.twitch.tv/helix/channels/vips?broadcaster_id="+str(data["room-id"])+"&user_id="+str(data["user-id"]),
+		headers,true,
+		HTTPClient.METHOD_POST)
+func _unvip(data):
+	print("UNVIP")
+	if !auth || !data.has("room-id") || !data.has("user-id"):
+		return
+	var headers = [ 
+		'Client-Id: '+client_id, 
+		'Authorization: Bearer '+auth.accessToken]
+	var httr = _newTemporalHttpRequest()
+	httr.request(
+		"https://api.twitch.tv/helix/channels/vips?broadcaster_id="+str(data["room-id"])+"&user_id="+str(data["user-id"]),
+		headers,true,
+		HTTPClient.METHOD_DELETE)
 
-
-
-
+func _newTemporalHttpRequest():
+	var httr = HTTPRequest.new();
+	httr.connect('request_completed',self,'_delTemporalHttpRequest',[httr])
+	add_child(httr)
+	return httr
+	
+func _delTemporalHttpRequest(result, response_code, headers, body, httr):
+	print(result)
+	httr.queue_free()
+	
+	
 
 

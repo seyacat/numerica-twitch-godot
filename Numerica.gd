@@ -4,6 +4,8 @@ var number = 0
 var last_username = ""
 var highscore = 0
 var highscore_username = ""
+var highscore_data = null
+var old_highscore_data = null
 var settings
 # Called when the node enters the scene tree for the first time.
 func _refreshSettings():
@@ -29,12 +31,19 @@ func _get_message(data):
 	if(!data.has('msg') 
 		|| !data.has('cmd') 
 		|| data.cmd != 'PRIVMSG' 
+		|| !data.has('user-id') 
 		|| !data.has('username') 
 		|| !data.has('room-id')
 		):
 		return
 	_refreshSettings();
 	var punishTime = settings.minBanTime + number * settings.banTimeMultiplier
+	
+	#allowBanMods
+	var canBeBanned = true;
+	if data.has("badges") && "moderator" in data.badges: 
+		if(!settings.allowBanMods):
+			canBeBanned = false;
 
 	var regex = RegEx.new()
 	regex.compile("^([0-9]{1,}).*$")
@@ -48,15 +57,23 @@ func _get_message(data):
 			return
 		#banPlayerWithCurrentNumber
 		if(last_username == data["username"]):
-			if( settings.banPlayerWithCurrentNumber):
-				$"../TwitchChat"._ban(data["room-id"],data["user-id"],settings.banPlayerWithCurrentNumberTime,"Cheater")
+			if settings.banPlayerWithCurrentNumber && canBeBanned:
+				$"../TwitchChat"._ban(data,settings.banPlayerWithCurrentNumberTime,"Cheater")
 			return
+		#allowModeratorsPlay
+		if data.has("badges") && "moderator" in data.badges: 
+			if(!settings.allowModsPlay):
+				return
 		
 		if( testNumber == number+1 ):
+			#hit
 			number += 1
 			if( highscore < number ):
-				$"../Game/Panel/label_highscore".text = "HIGH SCORE: "+ str(number)
-				$"../Game/Panel/label_by".text = "by "+ data["username"]
+				highscore = number
+				highscore_username = data["username"]
+				highscore_data = data
+				$"../Game/Panel/label_highscore".text = "HIGH SCORE: "+ str(highscore)
+				$"../Game/Panel/label_by".text = "by "+ highscore_username
 			last_username = data["username"]
 			$"../Game/Panel/label_username".text = last_username
 		else:
@@ -64,7 +81,16 @@ func _get_message(data):
 			number = 0;
 			last_username = ""
 			$"../Game/Panel/label_username".text = "Pierde: "+ data["username"]
-			$"../TwitchChat"._ban(data["room-id"],data["user-id"],punishTime,"Loser")
+			#record vips
+			if settings.temporalVip:
+				if(old_highscore_data &&  data['user-id'] != old_highscore_data['user-id'] ):
+					$"../TwitchChat"._unvip(old_highscore_data)
+				old_highscore_data = highscore_data
+				$"../TwitchChat"._vip(highscore_data)
+			
+			if canBeBanned:
+				$"../TwitchChat"._ban(data,punishTime,"Loser")
+			
 			
 	$"../Game/Panel/number".text = str(number)
 	
