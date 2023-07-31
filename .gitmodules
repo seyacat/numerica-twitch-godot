@@ -1,0 +1,3 @@
+[submodule "modules/TwitchChat.gd"]
+	path = modules/TwitchChat.gd
+	url = git@github.com:seyacat/TwitchChat.gd.git
