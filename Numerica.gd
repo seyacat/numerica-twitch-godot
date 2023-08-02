@@ -20,7 +20,15 @@ func _refreshSettings():
 	}
 func _ready():
 	$"../TwitchChat".connect("new_message",self,"_get_message")
-	pass # Replace with function body.
+
+func _process(delta):
+	if $"../TwitchChat".anonimous_connected:
+		$"../Game/Panel2/VBoxContainer/HBoxContainer7/connectionStatus".color = Color.gray;
+		$"../Game/Panel2/VBoxContainer/HBoxContainer6/anonimousConnectionStatus".color = Color.green;
+	if $"../TwitchChat".auth_connected:
+		$"../Game/Panel2/VBoxContainer/HBoxContainer7/connectionStatus".color = Color.green;
+		$"../Game/Panel2/VBoxContainer/HBoxContainer6/anonimousConnectionStatus".color = Color.gray;
+	
 
 func _show_settings():
 	#$"../Game/Panel/Sprite".connect()
@@ -47,7 +55,7 @@ func _get_message(data):
 
 	var regex = RegEx.new()
 	regex.compile("^([0-9]{1,}).*$")
-	var result = regex.search(data.msg.left(data.msg.length()-1))
+	var result = regex.search(data.msg)
 	
 	if result && result.get_string() == result.get_string(1):
 		var testNumber = int( data.msg );
